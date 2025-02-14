@@ -1,26 +1,62 @@
 import streamlit as st
 import pandas as pd
+import mysql.connector
 import folium
 from streamlit_folium import st_folium
 
-# Create sample data with latitude, longitude, and labels
-data = pd.DataFrame({
-    'name': ['Pothole 1', 'Pothole 2'],
-    'lat': [17.2987556, 17.29085],
-    'lon': [74.1900642, 74.1842447]
-})
+# Database Configuration
+DB_CONFIG = {
+    "host": "82.180.143.66",
+    "user": "u263681140_students1",
+    "password": "testStudents@123",
+    "database": "u263681140_students1"
+}
 
-# Initialize a Folium map
-m = folium.Map(location=[17.2948, 74.1872], zoom_start=15, tiles="OpenStreetMap")
+# Function to fetch data from MySQL
+def fetch_pothole_data():
+    try:
+        # Connect to MySQL database
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Fetch pothole data
+        cursor.execute("SELECT id, lat, lon FROM pothole")
+        data = cursor.fetchall()
+        
+        # Convert data to DataFrame
+        df = pd.DataFrame(data)
+        
+        # Close connection
+        cursor.close()
+        conn.close()
+        
+        return df
+    except mysql.connector.Error as err:
+        st.error(f"Database connection error: {err}")
+        return pd.DataFrame()  # Return an empty DataFrame on error
 
-# Add markers with popups and tooltips
-for index, row in data.iterrows():
-    folium.Marker(
-        location=[row['lat'], row['lon']],
-        popup=folium.Popup(row['name'], max_width=250),  # Popup text
-        tooltip=row['name'],  # Tooltip text
-        icon=folium.Icon(color="red", icon="info-sign")  # Explicit marker icon
-    ).add_to(m)
+# Fetch data
+df = fetch_pothole_data()
 
-# Display map in Streamlit
-st_folium(m, width=700, height=500)
+# Check if data is available
+if not df.empty:
+    # Initialize a Folium map
+    m = folium.Map(location=[df['lat'].mean(), df['lon'].mean()], zoom_start=15, tiles="OpenStreetMap")
+
+    # Add markers for each pothole
+    for index, row in df.iterrows():
+        folium.Marker(
+            location=[row['lat'], row['lon']],
+            popup=folium.Popup(f"Pothole ID: {row['id']}", max_width=250),
+            tooltip=f"Pothole ID: {row['id']}",
+            icon=folium.Icon(color="red", icon="info-sign")
+        ).add_to(m)
+
+    # Display the map in Streamlit
+    st_folium(m, width=700, height=500)
+    
+    # Display data table for reference
+    st.write("### Pothole Data")
+    st.dataframe(df)
+else:
+    st.warning("No pothole data found in the database.")
