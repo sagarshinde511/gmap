@@ -20,7 +20,7 @@ def fetch_pothole_data():
         cursor = conn.cursor(dictionary=True)
         
         # Fetch pothole data
-        cursor.execute("SELECT id, lat, lon FROM pothole")
+        cursor.execute("SELECT id, lat, lon FROM potholes")
         data = cursor.fetchall()
         
         # Convert data to DataFrame
