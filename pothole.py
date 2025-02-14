@@ -11,14 +11,15 @@ data = pd.DataFrame({
 })
 
 # Initialize a Folium map
-m = folium.Map(location=[17.2948, 74.1872], zoom_start=15)
+m = folium.Map(location=[17.2948, 74.1872], zoom_start=15, tiles="OpenStreetMap")
 
 # Add markers with popups and tooltips
 for index, row in data.iterrows():
     folium.Marker(
         location=[row['lat'], row['lon']],
         popup=folium.Popup(row['name'], max_width=250),  # Popup text
-        tooltip=row['name']  # Tooltip text
+        tooltip=row['name'],  # Tooltip text
+        icon=folium.Icon(color="red", icon="info-sign")  # Explicit marker icon
     ).add_to(m)
 
 # Display map in Streamlit
