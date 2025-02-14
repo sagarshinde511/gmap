@@ -20,12 +20,19 @@ def fetch_pothole_data():
         cursor = conn.cursor(dictionary=True)
         
         # Fetch pothole data
-        cursor.execute("SELECT id, lat, lon FROM potholes")
+        cursor.execute("SELECT id, lat, lon FROM pothole")
         data = cursor.fetchall()
         
         # Convert data to DataFrame
         df = pd.DataFrame(data)
         
+        # Ensure lat and lon are numeric
+        df["lat"] = pd.to_numeric(df["lat"], errors="coerce")
+        df["lon"] = pd.to_numeric(df["lon"], errors="coerce")
+
+        # Drop rows where lat/lon conversion failed
+        df.dropna(subset=["lat", "lon"], inplace=True)
+
         # Close connection
         cursor.close()
         conn.close()
@@ -40,13 +47,13 @@ df = fetch_pothole_data()
 
 # Check if data is available
 if not df.empty:
-    # Initialize a Folium map
-    m = folium.Map(location=[df['lat'].mean(), df['lon'].mean()], zoom_start=15, tiles="OpenStreetMap")
+    # Initialize a Folium map, centering it on the data
+    m = folium.Map(location=[df["lat"].mean(), df["lon"].mean()], zoom_start=15, tiles="OpenStreetMap")
 
     # Add markers for each pothole
     for index, row in df.iterrows():
         folium.Marker(
-            location=[row['lat'], row['lon']],
+            location=[row["lat"], row["lon"]],
             popup=folium.Popup(f"Pothole ID: {row['id']}", max_width=250),
             tooltip=f"Pothole ID: {row['id']}",
             icon=folium.Icon(color="red", icon="info-sign")
@@ -54,7 +61,7 @@ if not df.empty:
 
     # Display the map in Streamlit
     st_folium(m, width=700, height=500)
-    
+
     # Display data table for reference
     st.write("### Pothole Data")
     st.dataframe(df)
