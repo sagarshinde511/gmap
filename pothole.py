@@ -31,29 +31,28 @@ def fetch_pothole_data():
         return df
     except mysql.connector.Error as err:
         st.error(f"Database connection error: {err}")
-        return pd.DataFrame()  # Return empty DataFrame on error
+        return pd.DataFrame()
 
 # Title
-st.title("Pothole Location Map")
+st.title("Pothole Location Map Viewer")
 
-# Load data once and store in session_state
+# Load data only once using session_state
 if "pothole_data" not in st.session_state:
     st.session_state["pothole_data"] = fetch_pothole_data()
 
 df = st.session_state["pothole_data"]
 
-# Option to manually refresh data
+# Optional: Refresh button
 if st.button("Refresh Data"):
     st.session_state["pothole_data"] = fetch_pothole_data()
     df = st.session_state["pothole_data"]
     st.success("Data refreshed successfully!")
 
-# Display map and data if available
+# Check if data exists
 if not df.empty:
-    # Create Folium Map centered on average location
+    # Create the map centered on mean coordinates
     m = folium.Map(location=[df["lat"].mean(), df["lon"].mean()], zoom_start=15, tiles="OpenStreetMap")
 
-    # Add markers to map
     for _, row in df.iterrows():
         folium.Marker(
             location=[row["lat"], row["lon"]],
@@ -62,9 +61,11 @@ if not df.empty:
             icon=folium.Icon(color="red", icon="info-sign")
         ).add_to(m)
 
-    # Show map and data table
+    # Display the map
     st_folium(m, width=700, height=500)
-    st.write("### Pothole Data")
-    st.dataframe(df)
+
+    # Display table with only latitude and longitude
+    st.write("### Pothole Coordinates")
+    st.dataframe(df[["id", "lat", "lon"]])
 else:
     st.warning("No pothole data found in the database.")
