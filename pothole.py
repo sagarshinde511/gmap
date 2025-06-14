@@ -15,43 +15,46 @@ DB_CONFIG = {
 # Function to fetch data from MySQL
 def fetch_pothole_data():
     try:
-        # Connect to MySQL database
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor(dictionary=True)
-        
-        # Fetch pothole data
+
         cursor.execute("SELECT id, lat, lon FROM potholes")
         data = cursor.fetchall()
-        
-        # Convert data to DataFrame
+
         df = pd.DataFrame(data)
-        
-        # Ensure lat and lon are numeric
         df["lat"] = pd.to_numeric(df["lat"], errors="coerce")
         df["lon"] = pd.to_numeric(df["lon"], errors="coerce")
-
-        # Drop rows where lat/lon conversion failed
         df.dropna(subset=["lat", "lon"], inplace=True)
 
-        # Close connection
         cursor.close()
         conn.close()
-        
         return df
     except mysql.connector.Error as err:
         st.error(f"Database connection error: {err}")
-        return pd.DataFrame()  # Return an empty DataFrame on error
+        return pd.DataFrame()  # Return empty DataFrame on error
 
-# Fetch data
-df = fetch_pothole_data()
+# Title
+st.title("Pothole Location Map")
 
-# Check if data is available
+# Load data once and store in session_state
+if "pothole_data" not in st.session_state:
+    st.session_state["pothole_data"] = fetch_pothole_data()
+
+df = st.session_state["pothole_data"]
+
+# Option to manually refresh data
+if st.button("Refresh Data"):
+    st.session_state["pothole_data"] = fetch_pothole_data()
+    df = st.session_state["pothole_data"]
+    st.success("Data refreshed successfully!")
+
+# Display map and data if available
 if not df.empty:
-    # Initialize a Folium map, centering it on the data
+    # Create Folium Map centered on average location
     m = folium.Map(location=[df["lat"].mean(), df["lon"].mean()], zoom_start=15, tiles="OpenStreetMap")
 
-    # Add markers for each pothole
-    for index, row in df.iterrows():
+    # Add markers to map
+    for _, row in df.iterrows():
         folium.Marker(
             location=[row["lat"], row["lon"]],
             popup=folium.Popup(f"Pothole ID: {row['id']}", max_width=250),
@@ -59,10 +62,8 @@ if not df.empty:
             icon=folium.Icon(color="red", icon="info-sign")
         ).add_to(m)
 
-    # Display the map in Streamlit
+    # Show map and data table
     st_folium(m, width=700, height=500)
-
-    # Display data table for reference
     st.write("### Pothole Data")
     st.dataframe(df)
 else:
